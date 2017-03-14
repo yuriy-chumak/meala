@@ -6,7 +6,8 @@
 (define *map-width* 20)
 (define *read_position* 22)
 
-,load "scrollbox.lisp" ; say
+,load "scrollbox.lisp"  ; (say ...)
+,load "opengl-map.lisp" ; opengl drawing
 
 ; библиотека UI, AI и т.д.
 (define :read read)
@@ -29,11 +30,12 @@
 
 
 (define (map . args)
-(let loop ((args args) (n 1))
-   (locate 1 n)
-   (print (car args))
-   (if (not (null? (cdr args)))
-      (loop (cdr args) (+ n 1)))))
+   (let loop ((args args) (n 1))
+      (locate 1 n)
+      (print (car args))
+      (if (not (null? (cdr args)))
+         (loop (cdr args) (+ n 1))))
+   (mail 'opengl args))
 
 
 (define (spawn . args) #t)

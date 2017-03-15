@@ -68,7 +68,114 @@
 
    (#\# ; walls
       (glColor3f alpha alpha alpha)
-      (quadT x y 0/8 3/8))
+      (cond
+      ; монолитная стена
+      ((and (eq? (safe-at map (- x 1) y) #\#)
+            (eq? (safe-at map (+ x 1) y) #\#)
+            (eq? (safe-at map x (- y 1)) #\#)
+            (eq? (safe-at map x (+ y 1)) #\#))
+         (quadT x y 3/8 3/8))
+
+      ; прямые стены:
+      ; сверху вниз
+      ((and (ne? (safe-at map (- x 1) y) #\#)
+            (ne? (safe-at map (+ x 1) y) #\#)
+            (eq? (safe-at map x (- y 1)) #\#)
+            (eq? (safe-at map x (+ y 1)) #\#))
+         (quadT x y 3/8 1/8))
+
+      ; слева направо
+      ((and (eq? (safe-at map (- x 1) y) #\#)
+            (eq? (safe-at map (+ x 1) y) #\#)
+            (ne? (safe-at map x (- y 1)) #\#)
+            (ne? (safe-at map x (+ y 1)) #\#))
+         (quadT x y 1/8 3/8))
+
+      ; углы:
+      ; правый-верхний угол
+      ((and (eq? (safe-at map (- x 1) y) #\#)
+            (ne? (safe-at map (+ x 1) y) #\#)
+            (ne? (safe-at map x (- y 1)) #\#)
+            (eq? (safe-at map x (+ y 1)) #\#))
+         (quadT x y 4/8 2/8))
+      ; правый-нижний угол
+      ((and (eq? (safe-at map (- x 1) y) #\#)
+            (ne? (safe-at map (+ x 1) y) #\#)
+            (eq? (safe-at map x (- y 1)) #\#)
+            (ne? (safe-at map x (+ y 1)) #\#))
+         (quadT x y 4/8 4/8))
+      ; левый-верхний угол
+      ((and (ne? (safe-at map (- x 1) y) #\#)
+            (eq? (safe-at map (+ x 1) y) #\#)
+            (ne? (safe-at map x (- y 1)) #\#)
+            (eq? (safe-at map x (+ y 1)) #\#))
+         (quadT x y 2/8 2/8))
+      ; левый-нижний угол
+      ((and (ne? (safe-at map (- x 1) y) #\#)
+            (eq? (safe-at map (+ x 1) y) #\#)
+            (eq? (safe-at map x (- y 1)) #\#)
+            (ne? (safe-at map x (+ y 1)) #\#))
+         (quadT x y 2/8 4/8))
+
+
+      ; ответвления:
+      ; влево
+      ((and (eq? (safe-at map (- x 1) y) #\#)
+            (ne? (safe-at map (+ x 1) y) #\#)
+            (eq? (safe-at map x (- y 1)) #\#)
+            (eq? (safe-at map x (+ y 1)) #\#))
+         (quadT x y 2/8 3/8))
+      ; вниз
+      ((and (eq? (safe-at map (- x 1) y) #\#)
+            (eq? (safe-at map (+ x 1) y) #\#)
+            (ne? (safe-at map x (- y 1)) #\#)
+            (eq? (safe-at map x (+ y 1)) #\#))
+         (quadT x y 3/8 4/8))
+      ; вверх
+      ((and (eq? (safe-at map (- x 1) y) #\#)
+            (eq? (safe-at map (+ x 1) y) #\#)
+            (eq? (safe-at map x (- y 1)) #\#)
+            (ne? (safe-at map x (+ y 1)) #\#))
+         (quadT x y 3/8 2/8))
+      ; вправо
+      ((and (ne? (safe-at map (- x 1) y) #\#)
+            (eq? (safe-at map (+ x 1) y) #\#)
+            (eq? (safe-at map x (- y 1)) #\#)
+            (eq? (safe-at map x (+ y 1)) #\#))
+         (quadT x y 4/8 3/8))
+
+      ; тупики:
+      ; правый тупик
+      ((and (eq? (safe-at map (- x 1) y) #\#)
+            (ne? (safe-at map (+ x 1) y) #\#)
+            (ne? (safe-at map x (- y 1)) #\#)
+            (ne? (safe-at map x (+ y 1)) #\#))
+         (quadT x y 6/8 3/8))
+      ; левый тупик
+      ((and (ne? (safe-at map (- x 1) y) #\#)
+            (eq? (safe-at map (+ x 1) y) #\#)
+            (ne? (safe-at map x (- y 1)) #\#)
+            (ne? (safe-at map x (+ y 1)) #\#))
+         (quadT x y 0/8 3/8))
+      ; нижний тупик
+      ((and (ne? (safe-at map (- x 1) y) #\#)
+            (ne? (safe-at map (+ x 1) y) #\#)
+            (eq? (safe-at map x (- y 1)) #\#)
+            (ne? (safe-at map x (+ y 1)) #\#))
+         (quadT x y 3/8 6/8))
+      ; верхний тупик
+      ((and (ne? (safe-at map (- x 1) y) #\#)
+            (ne? (safe-at map (+ x 1) y) #\#)
+            (ne? (safe-at map x (- y 1)) #\#)
+            (eq? (safe-at map x (+ y 1)) #\#))
+         (quadT x y 3/8 0/8))
+
+      ; островок
+      ((and (ne? (safe-at map (- x 1) y) #\#)
+            (ne? (safe-at map (+ x 1) y) #\#)
+            (ne? (safe-at map x (- y 1)) #\#)
+            (ne? (safe-at map x (+ y 1)) #\#))
+         (quadT x y 3/8 3/8))))
 
 )))
 
@@ -123,9 +230,11 @@
             (glDisable GL_TEXTURE_2D)
          ))
 
-
          ; finish rendering loop
          (gl:SwapBuffers Context)
+
+         ; done.
          (gl:Disable Context)
-         ;(syscall 1022 0 #false #false)   ; free this loop
+         (set-ticker-value 0)  ; free this loop
+
          (this map)))))))

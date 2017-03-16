@@ -7,7 +7,7 @@
 (define *read_position* 22)
 
 ,load "scrollbox.lisp"  ; (say ...)
-,load "opengl-map.lisp" ; opengl drawing
+;,load "opengl-map.lisp" ; opengl drawing
 
 ; библиотека UI, AI и т.д.
 (define :read read)
@@ -34,8 +34,8 @@
       (locate 1 n)
       (print (car args))
       (if (not (null? (cdr args)))
-         (loop (cdr args) (+ n 1))))
-   (mail 'opengl args))
+         (loop (cdr args) (+ n 1)))))
+;   (mail 'opengl args))
 
 
 (define (spawn . args) #t)

@@ -185,5 +185,47 @@
 
 (print scene)
 
+(import (otus ffi))
+(import (lib sdl2))
+(import (OpenGL version-3-2))
+
+; create OpenGL window:
+; ***************************************************
+(if (less? (SDL_Init SDL_INIT_VIDEO) 0)
+   (begin
+      (print "Unable to Init SDL: " (SDL_GetError))
+      (exit-owl 1)))
+
+;(unless (eq? (IMG_Init IMG_INIT_PNG) IMG_INIT_PNG)
+;   (begin
+;      (print "Unable to init SDL png image support: " (SDL_GetError))
+;      (exit-owl 1)))
+
+; request OpenGL 3.2
+(SDL_GL_SetAttribute SDL_GL_CONTEXT_MAJOR_VERSION 3)
+(SDL_GL_SetAttribute SDL_GL_CONTEXT_MINOR_VERSION 2)
+
+(SDL_GL_SetAttribute SDL_GL_DOUBLEBUFFER 1)
+(SDL_GL_SetAttribute SDL_GL_DEPTH_SIZE  24)
+
+(define window (SDL_CreateWindow "Obj loading sample"
+   SDL_WINDOWPOS_UNDEFINED SDL_WINDOWPOS_UNDEFINED
+   640 480 (bor SDL_WINDOW_OPENGL SDL_WINDOW_SHOWN)))
+(print window)
+
+(define context (SDL_GL_CreateContext window))
+(SDL_GL_SetSwapInterval 1)
+
+(glClearColor 1 0 0 1)
+(glClear GL_COLOR_BUFFER_BIT)
+
+; draw something.
+
+(SDL_GL_SwapWindow window)
+(SDL_Delay 2000)
+
+;SDL_GL_DeleteContext
+;SDL_DestroyWindow
+;SDL_Quit
 
 (print "ok.")

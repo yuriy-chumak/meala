@@ -40,6 +40,10 @@
    (<= #\0 c #\9))
 
 ; reads a dotted (possibly) number from stream: 1, 1.11, -2, -33.45
+(define get-integer
+   (let-parses
+         ((integer (get-greedy+ (get-rune-if number-char?))))
+      (runes->integer integer)))
 (define get-number
    (let-parses
          ((sign get-sign) ; euther #\+ (default) or #\-
@@ -89,18 +93,42 @@
           (skip get-rest-of-line)) ; nothing more to read
       (tuple x y z)))
 
+(define get-face
+   (let-parses
+         ((skip (get-word "f " #t))
+          (a get-integer)
+          (skip (get-imm #\/))
+          (b (get-either get-integer (get-epsilon #f)))
+          (skip (get-imm #\/))
+          (c get-integer)
+          (skip get-rest-of-line))
+      (tuple a b c)))
+
+
+(define get-object-part
+   (let-parses
+         ((skip (get-word "usemtl " #t))
+          (material get-rest-of-line)
+          (faces (get-greedy+ get-face)))
+         ; there are can be lines "l " and points "p ", not parsed yet - please remove from file
+      (cons
+         (runes->string material) ; material name
+         faces)))
+
 (define get-object
    (let-parses
          ((skip (get-word "o " #t))
           (name get-rest-of-line)
           (vertices (get-greedy+ get-vertex)) ; v
           (normals (get-greedy+ get-normal))  ; vn
+          (parts (get-greedy+ get-object-part))
          ; usemtl ; rendering subparts
    )
       (cons (runes->string name)
             (list->ff `(
                (v . ,vertices)
-               (vn . ,normals))))))
+               (vn . ,normals)
+               (usemtl . ,parts))))))
 
 
 ; возвращает пару (имя-файла-с-материалами список-объектов)
@@ -108,7 +136,7 @@
    (let-parses
          ((skip (get-greedy* get-comment)) ; skip leading comments
           (mtllib get-mtllib)              ; matherial library filename
-          (objects (get-greedy* get-object))) ; complete objects list
+          (objects (get-greedy+ get-object))) ; complete objects list
       (cons mtllib objects)))
 
 ; --------------------------------
@@ -137,6 +165,9 @@
    (print info ">>> " (find-line lst pos) " <<<")
    #false)
 
+; please, remove smoothing groups from file using `sed -i '/^s /d' filename`
+; same for lines "l " and points "p "
+; additionally we support only triangles! no quads reading available
 (define (wavefront:obj-fd->sexp fd)
    (fd->exp-stream fd #false obj-parser syntax-fail))
 
@@ -145,9 +176,14 @@
 ; *********************************
 ;(import (file wavefront))
 
+(define scene
 (let ((fd (open-input-file "untitled.obj")))
-   (if fd (begin
-      (print (car (wavefront:obj-fd->sexp fd)))
-      (close-port fd))))
+   (if fd
+      (let ((sexp (car (wavefront:obj-fd->sexp fd))))
+         (close-port fd)
+         sexp))))
+
+(print scene)
+
 
 (print "ok.")

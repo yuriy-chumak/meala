@@ -81,7 +81,7 @@
           (skip (get-imm #\space))
           (z get-number)
           (skip get-rest-of-line)) ; nothing more to read
-      (tuple x y z)))
+      (list x y z)))
 (define get-normal
    (let-parses
          ((skip (get-word "vn " #t))
@@ -91,18 +91,27 @@
           (skip (get-imm #\space))
           (z get-number)
           (skip get-rest-of-line)) ; nothing more to read
-      (tuple x y z)))
+      (list x y z)))
+
+(define get-face-vertex
+   (let-parses
+         ((a get-integer)
+          (skip (get-imm #\/))
+          (b (get-either get-integer (get-epsilon #f)))
+          (skip (get-imm #\/))
+          (c get-integer))
+      (list a b c)))
 
 (define get-face
    (let-parses
          ((skip (get-word "f " #t))
-          (a get-integer)
-          (skip (get-imm #\/))
-          (b (get-either get-integer (get-epsilon #f)))
-          (skip (get-imm #\/))
-          (c get-integer)
+          (v1 get-face-vertex)
+          (skip (get-imm #\space))
+          (v2 get-face-vertex)
+          (skip (get-imm #\space))
+          (v3 get-face-vertex)
           (skip get-rest-of-line))
-      (tuple a b c)))
+      (list v1 v2 v3)))
 
 
 (define get-object-part
@@ -126,8 +135,8 @@
    )
       (cons (runes->string name)
             (list->ff `(
-               (v . ,vertices)
-               (vn . ,normals)
+               (v . ,(list->tuple vertices))
+               (vn . ,(list->tuple normals))
                (usemtl . ,parts))))))
 
 
@@ -187,7 +196,6 @@
 
 (import (otus ffi))
 (import (lib sdl2))
-(import (OpenGL version-3-2))
 
 ; create OpenGL window:
 ; ***************************************************
@@ -202,8 +210,8 @@
 ;      (exit-owl 1)))
 
 ; request OpenGL 3.2
-(SDL_GL_SetAttribute SDL_GL_CONTEXT_MAJOR_VERSION 3)
-(SDL_GL_SetAttribute SDL_GL_CONTEXT_MINOR_VERSION 2)
+(SDL_GL_SetAttribute SDL_GL_CONTEXT_MAJOR_VERSION 2)
+(SDL_GL_SetAttribute SDL_GL_CONTEXT_MINOR_VERSION 0)
 
 (SDL_GL_SetAttribute SDL_GL_DOUBLEBUFFER 1)
 (SDL_GL_SetAttribute SDL_GL_DEPTH_SIZE  24)
@@ -216,13 +224,77 @@
 (define context (SDL_GL_CreateContext window))
 (SDL_GL_SetSwapInterval 1)
 
-(glClearColor 1 0 0 1)
+(import (OpenGL version-2-0))
+
+; ...
+(glClearColor 0 0 0 1)
 (glClear GL_COLOR_BUFFER_BIT)
 
-; draw something.
+; projection
+(glMatrixMode GL_PROJECTION)
+(glLoadIdentity)
+(gluPerspective 45 (/ 640 480) 0.1 100)
 
+; modelview
+(glMatrixMode GL_MODELVIEW)
+(glLoadIdentity)
+(gluLookAt 2 3 5
+   0 0 0
+   0 1 0)
+
+; xyz
+(glBegin GL_LINES)
+   ; Ox
+   (glColor3f 1 0 0)
+   (glVertex3f 0 0 0)
+   (glVertex3f 2 0 0)
+      (glVertex3f 2 0 0)
+      (glVertex3f 1.9 0.1 0)
+      (glVertex3f 2 0 0)
+      (glVertex3f 1.9 0 0.1)
+   ; Oy
+   (glColor3f 0 1 0)
+   (glVertex3f 0 0 0)
+   (glVertex3f 0 2 0)
+      (glVertex3f 0 2 0)
+      (glVertex3f 0.1 1.9 0)
+      (glVertex3f 0 2 0)
+      (glVertex3f 0 1.9 0.1)
+   ; Oz
+   (glColor3f 0 0 1)
+   (glVertex3f 0 0 0)
+   (glVertex3f 0 0 2)
+      (glVertex3f 0 0 2)
+      (glVertex3f 0.1 0 1.9)
+      (glVertex3f 0 0 2)
+      (glVertex3f 0 0.1 1.9)
+(glEnd)
+
+; draw the scene
+(glBegin GL_TRIANGLES)
+   (for-each (lambda (object)
+      (let ((vertices (getf (cdr object) 'v))
+            (normals (getf (cdr object) 'vn))
+            (parts (getf (cdr object) 'usemtl)))
+         (print "Rendering " (car object))
+         (for-each (lambda (part)
+            (print "Using material " (car part))
+            (for-each (lambda (face)
+               (print "face: " face)
+               (for-each (lambda (v)
+                  (let*((vi unused ni v)
+                        (vertex (ref vertices vi)))
+                     (glVertex3fv vertex)
+                     ))
+                  face))
+               (cdr part)))
+            parts)))
+      (cdr scene))
+(glEnd)
+
+; finish
 (SDL_GL_SwapWindow window)
-(SDL_Delay 2000)
+(SDL_Delay 1000)
 
 ;SDL_GL_DeleteContext
 ;SDL_DestroyWindow

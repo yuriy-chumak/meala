@@ -8,6 +8,9 @@
    (lang sexp)
    (owl parse))
 
+(import
+   (owl math fp))
+
 ;(begin
 
 ; internal number utilities
@@ -138,8 +141,8 @@
    )
       (cons (runes->string name)
             (list->ff `(
-               (v . ,(list->tuple vertices))
-               (vn . ,(list->tuple normals))
+               (v . ,vertices)
+               (vn . ,normals)
                (usemtl . ,parts))))))
 
 
@@ -161,9 +164,7 @@
          (else (loop (cdr lst) (+ pos 1))))))
 
 (define (find-line data error-pos)
-   ;(print " - find-line")
    (let loop ((data data) (pos 0))
-      ;(print* (list "data " data " pos " pos  " error-pos " error-pos))
       (lets ((next datap (next-newline-distance data)))
          (cond
             ((<= error-pos next)
@@ -189,12 +190,13 @@
 ;(import (file wavefront))
 
 (define scene
-(let ((fd (open-input-file "untitled.obj")))
+(let ((fd (open-input-file "House.obj")))
    (if fd
       (let ((sexp (car (wavefront:obj-fd->sexp fd))))
          (close-port fd)
          sexp))))
 ;(print scene)
+;,quit
 
 (import (otus ffi))
 (import (lib sdl2))
@@ -302,6 +304,7 @@
 (glClearColor 0 0 0 1)
 (glClear (bor GL_COLOR_BUFFER_BIT GL_DEPTH_BUFFER_BIT))
 (glEnable GL_DEPTH_TEST)
+(glEnable GL_CULL_FACE)
 
 ; projection
 (glMatrixMode GL_PROJECTION)
@@ -311,9 +314,9 @@
 ; modelview
 (glMatrixMode GL_MODELVIEW)
 (glLoadIdentity)
-(gluLookAt 2 4 2
-   0 0 0
-   0 0 1)
+(gluLookAt 2 2 3
+   0 2 0
+   0 1 0)
 
 ; xyz
 (glUseProgram #f)
@@ -344,18 +347,39 @@
       (glVertex3f 0 0.1 1.9)
 (glEnd)
 
-(glUseProgram po)
-;(let* ((s2 m2 (clock)))
-;   (glUniform1f time (+ (/ (- m2 ms) 1000) (- s2 ss))))
-;(if (> resolution 0)
-;   (glUniform2f resolution width height))
 
-; draw the scene
+   ; we should collect all vertices into one array
+; let's compile house to render
+(define house (glGenLists 1))
+
+; sample function tlat flatten all lists inside into one
+;(define (flatten . args)
+;   (reverse
+;   (let loop ((tail #null) (args args))
+;      (if (null? args)
+;         tail
+;         (let ((head (car args)))
+;            (if (pair? head)
+;               (loop (loop tail head) (cdr args))
+;               (loop (cons head tail) (cdr args))))))))
+
+(glNewList house GL_COMPILE)
 (glBegin GL_TRIANGLES)
+
+(define vertices (list->tuple
+   (apply append
+      (map (lambda (object)
+            (get (cdr object) 'v '()))
+         (cdr scene)))))
+
+(define normals (list->tuple
+   (apply append
+      (map (lambda (object)
+            (get (cdr object) 'vn '()))
+         (cdr scene)))))
+
    (for-each (lambda (object)
-      (let ((vertices (getf (cdr object) 'v))
-            (normals (getf (cdr object) 'vn))
-            (parts (getf (cdr object) 'usemtl)))
+      (let ((parts (getf (cdr object) 'usemtl)))
          (print "Rendering " (car object))
          ;(print "normals: " normals)
          (for-each (lambda (part)
@@ -373,10 +397,59 @@
             parts)))
       (cdr scene))
 (glEnd)
+(glEndList)
 
+; actual rendering
+;(glUseProgram po)
+;(let* ((s2 m2 (clock)))
+;   (glUniform1f time (+ (/ (- m2 ms) 1000) (- s2 ss))))
+;(if (> resolution 0)
+;   (glUniform2f resolution width height))
+
+; draw the scene
+;(glCallList house)
 ; finish
-(SDL_GL_SwapWindow window)
-(SDL_Delay 5000)
+;(SDL_GL_SwapWindow window)
+;(SDL_Delay 1000)
+
+; render loop
+(call/cc (lambda (break)
+   (let loop ((alpha 0))
+      (let ((event (make-SDL_Event)))
+         (let event-loop ()
+            (unless (eq? (SDL_PollEvent event) 0)
+               (let ((type (int32->ol event 0)))
+                  (case type
+                     (SDL_QUIT (break))
+                     (else
+                        #f))
+                  (event-loop)))))
+      (glClear (bor GL_COLOR_BUFFER_BIT GL_DEPTH_BUFFER_BIT))
+      (glEnable GL_DEPTH_TEST)
+      (glEnable GL_CULL_FACE)
+
+      ; projection
+      (glMatrixMode GL_PROJECTION)
+      (glLoadIdentity)
+      (gluPerspective 55 (/ 640 480) 0.1 100)
+
+      ; modelview
+      (glMatrixMode GL_MODELVIEW)
+      (glLoadIdentity)
+      (let ((x (fmul (fsin (exact->inexact alpha)) (exact->inexact alpha)))
+            (z (fmul (fcos (exact->inexact alpha)) (exact->inexact alpha))))
+      (gluLookAt x 2 z
+         0 2 0
+         0 1 0))
+
+      ; house
+      (glUseProgram po)
+      (glCallList house)
+
+
+      (SDL_GL_SwapWindow window)
+      (loop (+ alpha 0.00012)))))
+
 
 ;SDL_GL_DeleteContext
 ;SDL_DestroyWindow

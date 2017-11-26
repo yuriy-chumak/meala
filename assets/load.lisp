@@ -66,8 +66,8 @@
 ; materials
 (define get-mtllib
    (let-parses
-         ((skip (get-word "mtllib" #t))
-          (skip (get-greedy+ (get-imm #\space)))
+         ((skip (get-word "mtllib " #t))
+          ;(skip (get-greedy+ (get-imm #\space)))
           (filename get-rest-of-line))
       (runes->string filename)))
 
@@ -100,7 +100,7 @@
           (b (get-either get-integer (get-epsilon #f)))
           (skip (get-imm #\/))
           (c get-integer))
-      (list a b c)))
+      (tuple a b c)))
 
 (define get-face
    (let-parses
@@ -118,6 +118,9 @@
    (let-parses
          ((skip (get-word "usemtl " #t))
           (material get-rest-of-line)
+          (skip (get-greedy* (let-parses ; possible "s off"
+                                ((skip (get-word "s " #t))
+                                 (skip get-rest-of-line)) #f)))
           (faces (get-greedy+ get-face)))
          ; there are can be lines "l " and points "p ", not parsed yet - please remove from file
       (cons
@@ -191,8 +194,7 @@
       (let ((sexp (car (wavefront:obj-fd->sexp fd))))
          (close-port fd)
          sexp))))
-
-(print scene)
+;(print scene)
 
 (import (otus ffi))
 (import (lib sdl2))
@@ -224,11 +226,82 @@
 (define context (SDL_GL_CreateContext window))
 (SDL_GL_SetSwapInterval 1)
 
+; opengl 2.0
 (import (OpenGL version-2-0))
 
-; ...
+; shaders loader:
+(define po
+(let ((po (glCreateProgram))
+      (vs (glCreateShader GL_VERTEX_SHADER))
+      (fs (glCreateShader GL_FRAGMENT_SHADER)))
+   (if (= po 0)
+      (runtime-error "Can't create shader program." '()))
+
+   ; пример, как можно передать в функцию массив указателей на строки:
+   ; vertex shader:
+   (glShaderSource vs 2 (list (c-string "#version 120 // OpenGL 2.1\n")
+                              (c-string "
+      varying vec3 normal;
+      void main() {
+         gl_Position = ftransform(); // gl_ModelViewProjectionMatrix * gl_Vertex
+
+         //normal = normalize(gl_NormalMatrix * gl_Normal).xyz;
+         normal = normalize(gl_Normal).xyz;
+         // gl_Position = gl_Vertex;
+      }")) #false)
+   (glCompileShader vs)
+   (let ((isCompiled (vm:new-raw-object type-vector-raw '(0))))
+      (glGetShaderiv vs GL_COMPILE_STATUS isCompiled)
+
+      (if (= (ref isCompiled 0) 0)
+         (let*((maxLength "??")
+               (_ (glGetShaderiv vs GL_INFO_LOG_LENGTH maxLength))
+               (maxLengthValue (+ (ref maxLength 0) (* (ref maxLength 1) 256)))
+               (errorLog (make-string maxLengthValue 0))
+               (_ (glGetShaderInfoLog vs maxLengthValue maxLength errorLog)))
+            (runtime-error errorLog vs))))
+   (glAttachShader po vs)
+
+   ; fragment shader:
+   (glShaderSource fs 2 (list (c-string "#version 120 // OpenGL 2.1")
+                              (c-string "
+      // http://glslsandbox.com/e#19102.0
+      uniform float time;
+
+      varying vec3 normal;
+      void main(void) {
+         //vec2 viewport = vec2(640, 480);
+
+         //get coords and direction
+         //vec2 uv=gl_FragCoord.xy / viewport.xy - .5;
+         //gl_FragColor = vec4(uv, 0,1);
+
+         gl_FragColor = vec4(normal * 0.7, 1.0);
+      }")) #false)
+   (glCompileShader fs)
+   (let ((isCompiled (vm:new-raw-object type-vector-raw '(0))))
+      (glGetShaderiv fs GL_COMPILE_STATUS isCompiled)
+
+      (if (= (ref isCompiled 0) 0)
+         (let*((maxLength "??")
+               (_ (glGetShaderiv fs GL_INFO_LOG_LENGTH maxLength))
+               (maxLengthValue (+ (ref maxLength 0) (* (ref maxLength 1) 256)))
+               (errorLog (make-string maxLengthValue 0))
+               (_ (glGetShaderInfoLog fs maxLengthValue maxLength errorLog)))
+            (runtime-error errorLog fs))))
+
+   (glAttachShader po fs)
+
+   (glLinkProgram po)
+   (glDetachShader po fs)
+   (glDetachShader po vs)
+))
+
+; *********************************
+; INIT
 (glClearColor 0 0 0 1)
-(glClear GL_COLOR_BUFFER_BIT)
+(glClear (bor GL_COLOR_BUFFER_BIT GL_DEPTH_BUFFER_BIT))
+(glEnable GL_DEPTH_TEST)
 
 ; projection
 (glMatrixMode GL_PROJECTION)
@@ -238,13 +311,14 @@
 ; modelview
 (glMatrixMode GL_MODELVIEW)
 (glLoadIdentity)
-(gluLookAt 2 3 5
+(gluLookAt 4 4 4
    0 0 0
-   0 1 0)
+   0 0 1)
 
 ; xyz
+(glUseProgram #f)
 (glBegin GL_LINES)
-   ; Ox
+   ; Ox (red)
    (glColor3f 1 0 0)
    (glVertex3f 0 0 0)
    (glVertex3f 2 0 0)
@@ -252,7 +326,7 @@
       (glVertex3f 1.9 0.1 0)
       (glVertex3f 2 0 0)
       (glVertex3f 1.9 0 0.1)
-   ; Oy
+   ; Oy (green)
    (glColor3f 0 1 0)
    (glVertex3f 0 0 0)
    (glVertex3f 0 2 0)
@@ -260,7 +334,7 @@
       (glVertex3f 0.1 1.9 0)
       (glVertex3f 0 2 0)
       (glVertex3f 0 1.9 0.1)
-   ; Oz
+   ; Oz (blue)
    (glColor3f 0 0 1)
    (glVertex3f 0 0 0)
    (glVertex3f 0 0 2)
@@ -270,6 +344,12 @@
       (glVertex3f 0 0.1 1.9)
 (glEnd)
 
+(glUseProgram po)
+;(let* ((s2 m2 (clock)))
+;   (glUniform1f time (+ (/ (- m2 ms) 1000) (- s2 ss))))
+;(if (> resolution 0)
+;   (glUniform2f resolution width height))
+
 ; draw the scene
 (glBegin GL_TRIANGLES)
    (for-each (lambda (object)
@@ -277,15 +357,17 @@
             (normals (getf (cdr object) 'vn))
             (parts (getf (cdr object) 'usemtl)))
          (print "Rendering " (car object))
+         ;(print "normals: " normals)
          (for-each (lambda (part)
-            (print "Using material " (car part))
+            ;(print "Using material " (car part))
             (for-each (lambda (face)
-               (print "face: " face)
+               ;(print "face: " face)
                (for-each (lambda (v)
-                  (let*((vi unused ni v)
-                        (vertex (ref vertices vi)))
-                     (glVertex3fv vertex)
-                     ))
+                  (let*((vi unused ni  v)
+                        (vertex (ref vertices vi))
+                        (normal (ref normals ni)))
+                     (glNormal3fv normal)
+                     (glVertex3fv vertex)))
                   face))
                (cdr part)))
             parts)))
@@ -294,7 +376,7 @@
 
 ; finish
 (SDL_GL_SwapWindow window)
-(SDL_Delay 1000)
+(SDL_Delay 5000)
 
 ;SDL_GL_DeleteContext
 ;SDL_DestroyWindow

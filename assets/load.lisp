@@ -306,12 +306,12 @@
 ; projection
 (glMatrixMode GL_PROJECTION)
 (glLoadIdentity)
-(gluPerspective 45 (/ 640 480) 0.1 100)
+(gluPerspective 55 (/ 640 480) 0.1 100)
 
 ; modelview
 (glMatrixMode GL_MODELVIEW)
 (glLoadIdentity)
-(gluLookAt 4 4 4
+(gluLookAt 2 4 2
    0 0 0
    0 0 1)
 

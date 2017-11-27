@@ -241,15 +241,20 @@
 
    ; пример, как можно передать в функцию массив указателей на строки:
    ; vertex shader:
+   ; http://steps3d.narod.ru/tutorials/lighting-tutorial.html
    (glShaderSource vs 2 (list (c-string "#version 120 // OpenGL 2.1\n")
                               (c-string "
       varying vec3 normal;
+      varying vec3 light;
       void main() {
+         // gl_Position = gl_Vertex;
          gl_Position = ftransform(); // gl_ModelViewProjectionMatrix * gl_Vertex
 
-         //normal = normalize(gl_NormalMatrix * gl_Normal).xyz;
-         normal = normalize(gl_Normal).xyz;
-         // gl_Position = gl_Vertex;
+         //normal = normalize(gl_Normal).xyz;
+         normal = normalize(gl_NormalMatrix * gl_Normal).xyz;
+
+         vec4 p = gl_ModelViewMatrix * gl_Vertex;
+         light = normalize(vec3(20, 20, 30) - p.xyz);
       }")) #false)
    (glCompileShader vs)
    (let ((isCompiled (vm:new-raw-object type-vector-raw '(0))))
@@ -270,6 +275,7 @@
       // http://glslsandbox.com/e#19102.0
       uniform float time;
 
+      varying vec3 light;
       varying vec3 normal;
       void main(void) {
          //vec2 viewport = vec2(640, 480);
@@ -278,7 +284,13 @@
          //vec2 uv=gl_FragCoord.xy / viewport.xy - .5;
          //gl_FragColor = vec4(uv, 0,1);
 
-         gl_FragColor = vec4(normal * 0.7, 1.0);
+         //gl_FragColor = vec4(normalize(normal) * 0.7, 1.0);
+
+         vec3 n2   = normalize ( normal );
+         vec3 l2   = normalize ( light );
+         vec4 diff = vec4(1, 1, 1, 1) * max ( dot ( n2, l2 ), 0.0 );
+
+         gl_FragColor = diff;
       }")) #false)
    (glCompileShader fs)
    (let ((isCompiled (vm:new-raw-object type-vector-raw '(0))))
@@ -414,7 +426,7 @@
 
 ; render loop
 (call/cc (lambda (break)
-   (let loop ((alpha 0))
+   (let loop ((alpha 20))
       (let ((event (make-SDL_Event)))
          (let event-loop ()
             (unless (eq? (SDL_PollEvent event) 0)

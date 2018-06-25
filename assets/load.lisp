@@ -206,7 +206,7 @@
 (if (less? (SDL_Init SDL_INIT_VIDEO) 0)
    (begin
       (print "Unable to Init SDL: " (SDL_GetError))
-      (exit-owl 1)))
+      (halt 1)))
 
 ;(unless (eq? (IMG_Init IMG_INIT_PNG) IMG_INIT_PNG)
 ;   (begin

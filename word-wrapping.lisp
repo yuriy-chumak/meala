@@ -131,19 +131,21 @@
             (reverse (cons line lines))
             (loop (cons line lines) iterator)))))
 
-;(define limits "+++++++++++++++++")
-;(print limits)
-;(print (hyphenation (string-length limits) ""))
-;
-;(for-each (lambda (line)
-;             (let loop ((s line))
-;                (if (not (null? s))
-;                   (begin
-;                      (display (runes->string (car s)))
-;                      (if (not (null? (cdr s)))
-;                         (begin
-;                            (display (runes->string '(#\space)))
-;                            (loop (cdr s)))))))
-;                   (print)) ; не нужен
-;    (hyphenation (string-length limits) "Так тихо. Не чути нічого. Я не чую навіть свого дихання, і це так дивно. А ще тут темно. Тихо і темно. Темрява плавно огортає мене з усіх сторін, перебирає тонкими пальцями моє волосся, заплітаючи дивні зачіски, закриває холодною долонею очі. Я плаваю у ній, неначе у воді."))
-;(print "ok.")
+#|
+(define limits "+++++++++++++++++")
+(print limits)
+(print (hyphenation (string-length limits) ""))
+
+(for-each (lambda (line)
+             (let loop ((s line))
+                (if (not (null? s))
+                   (begin
+                      (display (runes->string (car s)))
+                      (if (not (null? (cdr s)))
+                         (begin
+                            (display (runes->string '(#\space)))
+                            (loop (cdr s)))))))
+                   (print)) ; не нужен
+    (hyphenation (string-length limits) "Так тихо. Не чути нічого. Я не чую навіть свого дихання, і це так дивно. А ще тут темно. Тихо і темно. Темрява плавно огортає мене з усіх сторін, перебирає тонкими пальцями моє волосся, заплітаючи дивні зачіски, закриває холодною долонею очі. Я плаваю у ній, неначе у воді."))
+(print "ok.")
+|#

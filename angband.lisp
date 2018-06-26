@@ -7,6 +7,31 @@
 (define news (bytes->string (file->list "lib/file/news.txt")))
 (print news)
 
+; -- smart mail ----
+(define :mail mail)
+(define (mail address . args)
+   (:mail address (list->tuple args)))
+
+; -- windows library ---------------------------------------
+(fork-server 'windows (lambda ()
+(define (error msg)
+   (print "unknown command " msg " to windows server"))
+; main
+(let this ((windows #null))
+(let* ((envelope (wait-mail))
+       (sender msg envelope))
+   ; 1. Добавим новую строку к буферу
+   (tuple-case msg
+      ((reset)
+         (this #null))
+      ((add window)
+         (this (put windows window #t)))
+      (else
+         (print "unknown command " msg " to windows server")
+         (this windows)))))))
+; -- end of windows library ---
+
+
 ; -- term library ------------------------------------------
 (define empty-line (bytes->string (repeat #\space 80)))
 (define (term:erase x y n)
@@ -85,3 +110,9 @@
 ; (process_pref_file "pref.prf")
 
 (note "[Запуск... (сделано)]")
+(print)
+
+; ...
+(mail 'windows 'reset)
+(mail 'windows 'add2 'something)
+(read)
